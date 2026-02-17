@@ -6,6 +6,17 @@ Night Army Trader dashboard and APIs, deployed at:
 
 A Next.js-based trading web app with live market endpoints and dashboard pages.
 
+## Current Development Focus (IMPORTANT)
+
+Project is intentionally narrowed to one active scope:
+- **Polymarket BTC, 5-minute market only**
+
+Phase 2 and Phase 3 are intentionally on hold and moved to:
+- `future-phases/phase-2-observer/`
+- `future-phases/phase-3-platform/`
+
+See `PROJECT_PHASES.md` for full policy.
+
 ## Features
 
 - Landing page and trading modules (`/`, `/scalper`)
