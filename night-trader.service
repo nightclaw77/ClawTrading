@@ -1,0 +1,15 @@
+[Unit]
+Description=ClawTrading - Next.js App
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace/main/ClawTrading
+ExecStart=/usr/bin/node /root/.openclaw/workspace/main/ClawTrading/node_modules/.bin/next start -p 3000
+Restart=on-failure
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

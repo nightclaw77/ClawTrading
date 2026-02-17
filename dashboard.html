@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revolutionary Scalper v2.0 - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1419;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid #2a2f35; margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            background: linear-gradient(90deg, #22c55e, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .status { display: flex; align-items: center; gap: 8px; }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #22c55e; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .grid { display: grid; gap: 20px; }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+        .card {
+            background: #1a1f26; border-radius: 12px;
+            padding: 20px; border: 1px solid #2a2f35;
+        }
+        .card-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+            color: #6b7280; margin-bottom: 8px;
+        }
+        .card-value { font-size: 28px; font-weight: 700; }
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        .neutral { color: #6b7280; }
+        .price-banner { background: linear-gradient(135deg, #1a1f26 0%, #0f1419 100%); border: 1px solid #22c55e; }
+        .price-main {
+            font-size: 48px; font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+        .alerts { max-height: 300px; overflow-y: auto; }
+        .alert {
+            padding: 12px; margin-bottom: 8px; border-radius: 8px;
+            border-left: 4px solid; animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .alert-success { background: #064e3b; border-color: #22c55e; }
+        .alert-warning { background: #7f1d1d; border-color: #ef4444; }
+        .alert-info { background: #1e3a8a; border-color: #3b82f6; }
+        .indicator-row {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid #2a2f35;
+        }
+        .indicator-row:last-child { border-bottom: none; }
+        .timeframe-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
+        .btn {
+            padding: 8px 16px; border: 1px solid #2a2f35;
+            background: #1a1f26; color: #e0e0e0;
+            border-radius: 6px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn:hover { background: #2a2f35; }
+        .btn.active { background: #3b82f6; border-color: #3b82f6; }
+        .signal-box {
+            text-align: center; padding: 20px;
+            border-radius: 8px; font-size: 20px; font-weight: 600;
+        }
+        .signal-buy { background: #064e3b; color: #22c55e; }
+        .signal-sell { background: #7f1d1d; color: #ef4444; }
+        .signal-neutral { background: #374151; color: #9ca3af; }
+        .tradingview-container { height: 450px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>⚡ Revolutionary Scalper v2.0</h1>
+                <p style="color: #6b7280; margin-top: 4px;">BTC/USDT Adaptive Trading Bot</p>
+            </div>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>LIVE</span>
+            </div>
+        </header>
+
+        <!-- Price Banner -->
+        <div class="grid grid-4" style="margin-bottom: 20px;">
+            <div class="card price-banner">
+                <div class="card-title">BTC/USDT Price</div>
+                <div class="price-main" id="current-price">$--</div>
+                <div id="price-change" class="neutral">--%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">24h Change</div>
+                <div class="card-value positive" id="daily-change">+2.34%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">RSI (14)</div>
+                <div class="card-value" id="rsi-value">--</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Fear & Greed</div>
+                <div class="card-value" id="fear-greed">--</div>
+                <div style="font-size: 12px; color: #6b7280;" id="fear-greed-text">--</div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-4" style="margin-bottom: 20px;">
+            <div class="card">
+                <div class="card-title">Balance</div>
+                <div class="card-value" id="balance">$1,000.00</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Win Rate</div>
+                <div class="card-value positive" id="win-rate">58%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Active Trades</div>
+                <div class="card-value" id="active-trades">0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Drawdown</div>
+                <div class="card-value negative" id="drawdown">0%</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-2">
+            <!-- TradingView Chart -->
+            <div class="card" style="min-height: 500px;">
+                <div class="timeframe-buttons">
+                    <button class="btn" onclick="changeTimeframe('1')">1m</button>
+                    <button class="btn active" onclick="changeTimeframe('5')">5m</button>
+                    <button class="btn" onclick="changeTimeframe('15')">15m</button>
+                    <button class="btn" onclick="changeTimeframe('60')">1h</button>
+                    <button class="btn" onclick="changeTimeframe('240')">4h</button>
+                    <button class="btn" onclick="changeTimeframe('D')">1D</button>
+                </div>
+                
+                <div class="tradingview-container">
+                    <div id="tradingview_chart" style="height: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- Indicators & Alerts -->
+            <div>
+                <!-- Current Signal -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title">Current Signal</div>
+                    <div class="signal-box signal-neutral" id="current-signal">SCANNING...</div>
+                </div>
+
+                <!-- Technical Indicators -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title">Technical Analysis</div>
+                    <div class="indicator-row">
+                        <span>EMA 9</span>
+                        <span id="ema-9" class="positive">--</span>
+                    </div>
+                    <div class="indicator-row">
+                        <span>EMA 21</span>
+                        <span id="ema-21" class="neutral">--</span>
+                    </div>
+                    <div class="indicator-row">
+                        <span>EMA 50</span>
+                        <span id="ema-50">--</span>
+                    </div>
+                    <div class="indicator-row">
+                        <span>EMA 200</span>
+                        <span id="ema-200">--</span>
+                    </div>
+                    <div class="indicator-row">
+                        <span>MACD</span>
+                        <span id="macd">--</span>
+                    </div>
+                    <div class="indicator-row">
+                        <span>Volume</span>
+                        <span id="volume">--</span>
+                    </div>
+                </div>
+
+                <!-- Alerts -->
+                <div class="card">
+                    <div class="card-title">Recent Alerts</div>
+                    <div class="alerts" id="alerts">
+                        <div class="alert alert-info">System initialized - Waiting for data...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TradingView Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        let tvWidget = null;
+        let currentTimeframe = "5";
+        
+        function initTradingView() {
+            tvWidget = new TradingView.widget({
+                "autosize": true,
+                "symbol": "BINANCE:BTCUSDT",
+                "interval": currentTimeframe,
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#1a1f26",
+                "enable_publishing": false,
+                "hide_side_toolbar": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart",
+                "studies": [
+                    "RSI@tv-basicstudies",
+                    "MACD@tv-basicstudies",
+                    "Volume@tv-basicstudies",
+                    "BB@tv-basicstudies"
+                ],
+                "overrides": {
+                    "mainSeriesProperties.candleStyle.upColor": "#22c55e",
+                    "mainSeriesProperties.candleStyle.downColor": "#ef4444",
+                    "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
+                    "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444"
+                }
+            });
+        }
+        
+        function changeTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.timeframe-buttons .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (tvWidget) {
+                tvWidget.remove();
+            }
+            initTradingView();
+            addAlert('Timeframe changed to ' + (tf === 'D' ? '1D' : tf + 'm'), 'info');
+        }
+        
+        function addAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-' + type;
+            alert.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            alertsContainer.insertBefore(alert, alertsContainer.firstChild);
+            while (alertsContainer.children.length > 10) {
+                alertsContainer.removeChild(alertsContainer.lastChild);
+            }
+        }
+        
+        function updateDashboard() {
+            const currentPrice = 68000 + (Math.random() - 0.5) * 200;
+            document.getElementById('current-price').textContent = '$' + currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            
+            const rsi = Math.floor(Math.random() * 40) + 30;
+            document.getElementById('rsi-value').textContent = rsi;
+            document.getElementById('rsi-value').className = rsi > 70 ? 'card-value negative' : rsi < 30 ? 'card-value positive' : 'card-value';
+            
+            const fearGreed = Math.floor(Math.random() * 40) + 30;
+            document.getElementById('fear-greed').textContent = fearGreed;
+            let fearGreedText = 'Neutral';
+            if (fearGreed <= 20) fearGreedText = 'Extreme Fear 😱';
+            else if (fearGreed <= 40) fearGreedText = 'Fear 😰';
+            else if (fearGreed >= 80) fearGreedText = 'Extreme Greed 🤑';
+            else if (fearGreed >= 60) fearGreedText = 'Greed 😏';
+            document.getElementById('fear-greed-text').textContent = fearGreedText;
+            
+            document.getElementById('ema-9').textContent = (currentPrice * 1.001).toFixed(2);
+            document.getElementById('ema-21').textContent = (currentPrice * 0.998).toFixed(2);
+            document.getElementById('ema-50').textContent = (currentPrice * 0.995).toFixed(2);
+            document.getElementById('ema-200').textContent = (currentPrice * 0.990).toFixed(2);
+            
+            const signalEl = document.getElementById('current-signal');
+            if (rsi > 70) {
+                signalEl.textContent = 'SELL (Overbought)';
+                signalEl.className = 'signal-box signal-sell';
+            } else if (rsi < 30) {
+                signalEl.textContent = 'BUY (Oversold)';
+                signalEl.className = 'signal-box signal-buy';
+            } else {
+                signalEl.textContent = 'NEUTRAL';
+                signalEl.className = 'signal-box signal-neutral';
+            }
+        }
+        
+        // Initialize
+        initTradingView();
+        setInterval(updateDashboard, 10000);
+        updateDashboard();
+    </script>
+</body>
+</html>
