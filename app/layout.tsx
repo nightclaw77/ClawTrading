@@ -13,8 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Night Army Trader | Revolutionary Scalper v2.0",
-  description: "Advanced crypto trading suite with AI-powered scalping bot, adaptive learning, and real-time market analysis.",
+  title: "ClawTrade | Polymarket AI Bot",
+  description: "Revolutionary AI-powered Polymarket trading engine with real-time analytics, intelligent position management, and Claude-powered market analysis.",
+  keywords: ["crypto", "trading", "polymarket", "AI", "bot", "bitcoin", "solana"],
+  authors: [{ name: "ClawTrade Team" }],
+  openGraph: {
+    title: "ClawTrade | Polymarket AI Bot",
+    description: "Revolutionary AI-powered Polymarket trading engine",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +31,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#020617" />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}
+      >
         {children}
       </body>
     </html>

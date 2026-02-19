@@ -31,7 +31,9 @@ body {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Custom scrollbar */
+/* ============================================================================
+   Custom Scrollbar
+   ============================================================================ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -44,19 +46,37 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
-/* Selection */
+/* Smooth scrollbar for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+
+/* ============================================================================
+   Selection & Text
+   ============================================================================ */
 ::selection {
   background: rgba(59, 130, 246, 0.3);
   color: #fff;
 }
 
-/* Animations */
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #fff;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+/* Pulse Glow Animation */
 @keyframes pulse-glow {
   0%, 100% {
     box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
@@ -70,7 +90,94 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* Utility classes */
+/* Glow Text Animation - for the hero title */
+@keyframes glow-text {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(59, 130, 246, 0.5),
+      0 0 20px rgba(6, 182, 212, 0.3),
+      0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(59, 130, 246, 0.8),
+      0 0 30px rgba(6, 182, 212, 0.6),
+      0 0 40px rgba(59, 130, 246, 0.4);
+  }
+}
+
+.glow-text {
+  animation: glow-text 3s ease-in-out infinite;
+}
+
+/* Live Dot Pulse Animation */
+@keyframes live-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* Animated Gradient Background */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Slide In Animation */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.5s ease-out;
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
 .surface {
   background: #0f172a;
   border: 1px solid #1e293b;
@@ -80,4 +187,53 @@ body {
 .glass {
   background: rgba(15, 23, 42, 0.8);
   backdrop-filter: blur(12px);
+}
+
+/* Grid pattern background */
+.grid-background {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Gradient border effect */
+.gradient-border {
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  background-image: linear-gradient(#020617, #020617), linear-gradient(135deg, #3b82f6, #06b6d4);
+  background-origin: border-box;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.2);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .glow-text {
+    font-size: 2.25rem;
+  }
+}
+
+/* ============================================================================
+   Dark Mode (Already applied globally)
+   ============================================================================ */
+
+html.dark {
+  color-scheme: dark;
 }
