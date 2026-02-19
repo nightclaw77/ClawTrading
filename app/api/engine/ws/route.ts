@@ -68,8 +68,8 @@ const DEFAULT_BOT_CONFIG: BotConfig = {
   },
 
   risk: {
-    maxPositionSizePercent: 2,
-    maxOpenPositions: 2,
+    maxPositionSizePercent: 0,
+    maxOpenPositions: 0,
     dailyLossLimitPercent: 5,
     maxDrawdownPercent: 8,
     maxTradesPerHour: 20,

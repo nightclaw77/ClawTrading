@@ -871,6 +871,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [selectedAsset, setSelectedAsset] = useState<'BTC' | 'SOL'>('BTC');
+  const [selectedTf, setSelectedTf] = useState<'15' | '5'>('15');
+  const [spot, setSpot] = useState<{ btc?: { price: number; change24h: number }; sol?: { price: number; change24h: number } }>({});
   const sseRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -909,6 +912,24 @@ export default function Dashboard() {
     poll();
     const interval = setInterval(poll, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Real spot prices (Binance)
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    const loadSpot = async () => {
+      try {
+        const r = await fetch('/api/market/spot', { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j?.success) {
+          setSpot({ btc: j.btc, sol: j.sol });
+        }
+      } catch {}
+    };
+    loadSpot();
+    timer = setInterval(loadSpot, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   // Connect to SSE with fallback polling
@@ -1016,6 +1037,20 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const viewData: EngineData = {
+    ...data,
+    btc: {
+      ...data.btc,
+      price: spot.btc?.price ?? data.btc.price,
+      change24h: spot.btc?.change24h ?? data.btc.change24h,
+    },
+    sol: {
+      ...data.sol,
+      price: spot.sol?.price ?? data.sol.price,
+      change24h: spot.sol?.change24h ?? data.sol.change24h,
+    },
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-[#030712] to-slate-950 text-white">
