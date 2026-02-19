@@ -830,20 +830,56 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fallback polling
+  const setupPolling = useCallback(() => {
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/engine');
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+        const raw = await response.json();
+        const newData = ((raw?.data ?? raw) as EngineData);
+        setData(newData);
+        setLoading(false);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Connection failed');
+        setLoading(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Connect to SSE with fallback polling
   const connectSSE = useCallback(() => {
     // Try SSE first
     try {
       const eventSource = new EventSource('/api/engine/ws');
 
-      eventSource.onmessage = (event) => {
+      // Server emits custom events (dashboard:update), not default "message"
+      eventSource.addEventListener('dashboard:update', (event: MessageEvent) => {
         try {
-          const newData = JSON.parse(event.data) as EngineData;
-          setData(newData);
+          const payload = JSON.parse(event.data) as { data: EngineData; timestamp: number };
+          setData(payload.data);
           setLoading(false);
           setError(null);
         } catch (err) {
-          console.error('Failed to parse SSE data:', err);
+          console.error('Failed to parse dashboard:update SSE data:', err);
+        }
+      });
+
+      // Keep this as fallback if server ever emits plain message events
+      eventSource.onmessage = (event) => {
+        try {
+          const maybe = JSON.parse(event.data) as EngineData;
+          setData(maybe);
+          setLoading(false);
+          setError(null);
+        } catch {
+          // ignore non-EngineData messages
         }
       };
 
@@ -859,29 +895,7 @@ export default function Dashboard() {
       console.warn('SSE not supported, using polling');
       setupPolling();
     }
-  }, []);
-
-  // Fallback polling
-  const setupPolling = useCallback(() => {
-    const poll = async () => {
-      try {
-        const response = await fetch('/api/engine');
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-        const newData = (await response.json()) as EngineData;
-        setData(newData);
-        setLoading(false);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Connection failed');
-        setLoading(false);
-      }
-    };
-
-    poll();
-    const interval = setInterval(poll, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [setupPolling]);
 
   // Initialize connection
   useEffect(() => {
