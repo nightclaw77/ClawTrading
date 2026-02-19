@@ -4,6 +4,7 @@
  */
 
 import crypto from 'crypto';
+import { Wallet } from 'ethers';
 import {
   Asset,
   Timeframe,
@@ -31,6 +32,7 @@ interface ApiConfig {
   passphrase: string;
   privateKey: string;
   funderAddress: string;
+  signerAddress?: string;
 }
 
 interface OrderbookResponse {
@@ -60,17 +62,24 @@ export class PolymarketClient {
    * Create client from environment variables
    */
   static fromEnv(): PolymarketClient {
+    const privateKey = process.env.POLYMARKET_PRIVATE_KEY || '';
+    let signerAddress = '';
+    if (privateKey) {
+      try {
+        signerAddress = new Wallet(privateKey).address;
+      } catch {
+        signerAddress = '';
+      }
+    }
+
     const config = {
       apiKey: process.env.POLYMARKET_API_KEY || '',
       secret: process.env.POLYMARKET_SECRET || '',
       passphrase: process.env.POLYMARKET_PASSPHRASE || '',
-      privateKey: process.env.POLYMARKET_PRIVATE_KEY || '',
+      privateKey,
       funderAddress: process.env.POLYMARKET_FUNDER_ADDRESS || '',
+      signerAddress,
     };
-
-    if (!config.apiKey || !config.secret || !config.passphrase) {
-      throw new Error('Missing Polymarket credentials in environment variables');
-    }
 
     return new PolymarketClient(config);
   }
@@ -79,10 +88,84 @@ export class PolymarketClient {
    * Validate configuration
    */
   private validateConfig(): void {
-    if (!this.config.apiKey) throw new Error('API key required');
-    if (!this.config.secret) throw new Error('API secret required');
-    if (!this.config.passphrase) throw new Error('API passphrase required');
+    if (!this.config.privateKey) throw new Error('Private key required');
     if (!this.config.funderAddress) throw new Error('Funder address required');
+    // L2 creds may be missing initially; we can derive them via L1 auth on startup.
+  }
+
+  private derivingPromise: Promise<void> | null = null;
+
+  /**
+   * Derive L2 API credentials from private key using L1 auth.
+   */
+  private async deriveApiCredentials(): Promise<void> {
+    if (this.derivingPromise) {
+      await this.derivingPromise;
+      return;
+    }
+
+    this.derivingPromise = (async () => {
+      const wallet = new Wallet(this.config.privateKey);
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const nonce = 0;
+
+      const domain = {
+        name: 'ClobAuthDomain',
+        version: '1',
+        chainId: 137,
+      };
+
+      const types = {
+        ClobAuth: [
+          { name: 'address', type: 'address' },
+          { name: 'timestamp', type: 'string' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'message', type: 'string' },
+        ],
+      } as const;
+
+      const value = {
+        address: wallet.address,
+        timestamp,
+        nonce,
+        message: 'This message attests that I control the given wallet',
+      };
+
+      const signature = await wallet.signTypedData(domain, types as any, value as any);
+
+      const response = await fetch(`${CLOB_BASE_URL}/auth/derive-api-key`, {
+        method: 'GET',
+        headers: {
+          'POLY_ADDRESS': wallet.address,
+          'POLY_SIGNATURE': signature,
+          'POLY_TIMESTAMP': timestamp,
+          'POLY_NONCE': String(nonce),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to derive API credentials: ${response.status} ${await response.text()}`);
+      }
+
+      const creds = await response.json() as { apiKey: string; secret: string; passphrase: string };
+      this.config.apiKey = creds.apiKey;
+      this.config.secret = creds.secret;
+      this.config.passphrase = creds.passphrase;
+      this.config.signerAddress = wallet.address;
+      console.log('[POLYMARKET] L2 credentials derived from private key');
+    })();
+
+    try {
+      await this.derivingPromise;
+    } finally {
+      this.derivingPromise = null;
+    }
+  }
+
+  private async ensureApiCredentials(): Promise<void> {
+    if (!this.config.apiKey || !this.config.secret || !this.config.passphrase) {
+      await this.deriveApiCredentials();
+    }
   }
 
   /**
@@ -129,6 +212,8 @@ export class PolymarketClient {
     body?: any,
     retries: number = 3
   ): Promise<T> {
+    await this.ensureApiCredentials();
+
     const cacheKey = `${method}:${path}`;
 
     // Check cache for GET requests
@@ -147,7 +232,8 @@ export class PolymarketClient {
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'POLY_ADDRESS': this.config.funderAddress,
+      // Per docs: signer address goes in POLY_ADDRESS (funder is set when creating orders)
+      'POLY_ADDRESS': this.config.signerAddress || this.config.funderAddress,
       'POLY_SIGNATURE': signature,
       'POLY_TIMESTAMP': timestamp,
       'POLY_API_KEY': this.config.apiKey,
@@ -163,6 +249,18 @@ export class PolymarketClient {
 
       if (!response.ok) {
         const errorText = await response.text();
+
+        // If API key is invalid, re-derive once and retry.
+        if (response.status === 401 && /Invalid api key|Unauthorized/i.test(errorText)) {
+          this.config.apiKey = '';
+          this.config.secret = '';
+          this.config.passphrase = '';
+          if (retries > 0) {
+            await this.ensureApiCredentials();
+            return this.request<T>(method, path, body, retries - 1);
+          }
+        }
+
         throw new Error(`API error ${response.status}: ${errorText}`);
       }
 

@@ -68,6 +68,64 @@ interface EngineData extends PriceData {
   stats: BotStats;
 }
 
+// Normalize mixed backend payloads into dashboard UI shape
+function toEngineData(raw: any): EngineData {
+  // Already in expected shape
+  if (raw?.btc?.price !== undefined && raw?.sol?.price !== undefined) {
+    return raw as EngineData;
+  }
+
+  // New API shape: { dashboard, state, metrics } or just dashboard
+  const d = raw?.dashboard ?? raw ?? {};
+
+  const sessionMap = (d?.currentSession?.currentSession ?? d?.currentSession ?? 'CLOSED') as BotStats['session'];
+  const statusMap = (d?.botStatus ?? d?.status ?? 'STOPPED') as BotStats['status'];
+
+  const currentPrice = Number(d?.currentPrice ?? 0);
+  const dailyPnL = Number(d?.dailyPnL ?? 0);
+
+  return {
+    btc: {
+      price: currentPrice,
+      change24h: 0,
+      rsi: 50,
+      macd: { value: 0, signal: 0, histogram: 0 },
+      emaAlignment: 50,
+      regime: 'RANGING',
+      lastSignalTime: new Date().toISOString(),
+    },
+    sol: {
+      price: currentPrice,
+      change24h: 0,
+      rsi: 50,
+      macd: { value: 0, signal: 0, histogram: 0 },
+      emaAlignment: 50,
+      regime: 'RANGING',
+      lastSignalTime: new Date().toISOString(),
+    },
+    timestamp: new Date().toISOString(),
+    signal: {
+      direction: 'NEUTRAL',
+      confidence: Number(d?.marketRegime?.confidence ?? 50),
+      asset: 'BOTH',
+      reason: 'Waiting for market data',
+      timestamp: new Date().toISOString(),
+    },
+    positions: Array.isArray(d?.openPositions) ? d.openPositions : [],
+    stats: {
+      status: statusMap,
+      session: sessionMap,
+      todayPnL: dailyPnL,
+      winRate: Number(d?.dailyWinRate ?? 0),
+      totalTrades: Number(d?.allTimeStats?.totalTrades ?? 0),
+      maxDrawdown: Number(d?.currentDrawdownPercent ?? 0),
+      profitFactor: Number(d?.allTimeStats?.profitFactor ?? 0),
+      arbitrageSignals: Number(d?.alerts?.length ?? 0),
+      fearGreedIndex: 50,
+    },
+  };
+}
+
 // ============================================================================
 // ANIMATED NUMBER COMPONENT
 // ============================================================================
@@ -838,7 +896,7 @@ export default function Dashboard() {
         if (!response.ok) throw new Error(`API error: ${response.status}`);
 
         const raw = await response.json();
-        const newData = ((raw?.data ?? raw) as EngineData);
+        const newData = toEngineData(raw?.data ?? raw);
         setData(newData);
         setLoading(false);
         setError(null);
@@ -862,8 +920,8 @@ export default function Dashboard() {
       // Server emits custom events (dashboard:update), not default "message"
       eventSource.addEventListener('dashboard:update', (event: MessageEvent) => {
         try {
-          const payload = JSON.parse(event.data) as { data: EngineData; timestamp: number };
-          setData(payload.data);
+          const payload = JSON.parse(event.data) as { data: any; timestamp: number };
+          setData(toEngineData(payload?.data));
           setLoading(false);
           setError(null);
         } catch (err) {
@@ -874,8 +932,8 @@ export default function Dashboard() {
       // Keep this as fallback if server ever emits plain message events
       eventSource.onmessage = (event) => {
         try {
-          const maybe = JSON.parse(event.data) as EngineData;
-          setData(maybe);
+          const maybe = JSON.parse(event.data);
+          setData(toEngineData(maybe));
           setLoading(false);
           setError(null);
         } catch {
