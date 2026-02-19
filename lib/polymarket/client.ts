@@ -87,19 +87,35 @@ export class PolymarketClient {
 
   /**
    * Generate HMAC-SHA256 signature for L2 authentication
-   * Signature covers: timestamp + method + path + body
+   * Per Polymarket docs: message = timestamp + method + requestPath [+ body]
+   * Secret is base64-encoded and must be decoded before use
+   * Signature output must be URL-safe base64 (+ → -, / → _)
    */
   private generateSignature(
     method: string,
     path: string,
     body: string = ''
   ): { timestamp: string; signature: string } {
-    const timestamp = Date.now().toString();
+    const timestamp = Math.floor(Date.now() / 1000).toString(); // UNIX seconds
 
-    const message = timestamp + method.toUpperCase() + path + body;
-    const hmac = crypto.createHmac('sha256', this.config.secret);
+    let message = timestamp + method.toUpperCase() + path;
+    if (body) {
+      message += body;
+    }
+
+    // Decode base64url secret (convert - to + and _ to /)
+    const secretFixed = this.config.secret
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .replace(/[^A-Za-z0-9+/=]/g, '');
+    const secretBuf = Buffer.from(secretFixed, 'base64');
+
+    const hmac = crypto.createHmac('sha256', secretBuf);
     hmac.update(message);
-    const signature = hmac.digest('base64');
+    // URL-safe base64 output (+ → -, / → _)
+    const signature = hmac.digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
 
     return { timestamp, signature };
   }
@@ -125,14 +141,17 @@ export class PolymarketClient {
 
     const url = `${CLOB_BASE_URL}${path}`;
     const bodyStr = body ? JSON.stringify(body) : '';
-    const { timestamp, signature } = this.generateSignature(method, path, bodyStr);
+    // Sign only the base path (no query params) per Polymarket SDK behavior
+    const signPath = path.split('?')[0];
+    const { timestamp, signature } = this.generateSignature(method, signPath, bodyStr);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'POLY-TIMESTAMP': timestamp,
-      'POLY-SIGNATURE': signature,
-      'POLY-API-KEY': this.config.apiKey,
-      'POLY-PASSPHRASE': this.config.passphrase,
+      'POLY_ADDRESS': this.config.funderAddress,
+      'POLY_SIGNATURE': signature,
+      'POLY_TIMESTAMP': timestamp,
+      'POLY_API_KEY': this.config.apiKey,
+      'POLY_PASSPHRASE': this.config.passphrase,
     };
 
     try {
@@ -497,15 +516,17 @@ export class PolymarketClient {
 
   /**
    * Get USDC balance and account information
+   * Uses /balance-allowance endpoint with signature_type=1 (POLY_PROXY for Magic Key)
    */
   async getBalance(): Promise<AccountBalance> {
     try {
-      const response = await this.request<{ balance: string }>(
+      const response = await this.request<{ balance: string; allowance: string }>(
         'GET',
-        `/user/${this.config.funderAddress}/balances`
+        `/balance-allowance?asset_type=COLLATERAL&signature_type=1`
       );
 
-      const usdc = parseFloat(response.balance);
+      // Balance is in USDC.e (6 decimals)
+      const usdc = parseFloat(response.balance) / 1e6;
 
       return {
         usdc,
@@ -524,6 +545,41 @@ export class PolymarketClient {
    */
   clearCache(): void {
     this.requestCache.clear();
+  }
+
+  // ========== HEARTBEAT (critical for keeping orders alive) ==========
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Start heartbeat - Polymarket requires this every 10 seconds
+   * Without heartbeat, ALL open orders get cancelled automatically
+   */
+  startHeartbeat(): void {
+    if (this.heartbeatInterval) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        await this.request<void>('POST', '/auth/heartbeat');
+      } catch (error) {
+        console.warn('[HEARTBEAT] Failed:', error);
+      }
+    };
+
+    // Send immediately, then every 8 seconds (within 10s window)
+    sendHeartbeat();
+    this.heartbeatInterval = setInterval(sendHeartbeat, 8000);
+    console.log('[POLYMARKET] Heartbeat started (8s interval)');
+  }
+
+  /**
+   * Stop heartbeat - call when pausing/stopping bot
+   */
+  stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+      console.log('[POLYMARKET] Heartbeat stopped');
+    }
   }
 
   /**

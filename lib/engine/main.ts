@@ -316,6 +316,9 @@ export class TradingEngine extends EventEmitter {
 
       this.emit('state:updated', { status: 'RUNNING', timestamp: Date.now() });
 
+      // Start Polymarket heartbeat (critical: keeps orders alive)
+      this.polymarketClient.startHeartbeat();
+
       // Start main trading loop (10 seconds)
       this.mainLoopInterval = setInterval(() => {
         this.runCycle().catch((err) => {
@@ -363,6 +366,9 @@ export class TradingEngine extends EventEmitter {
         clearInterval(this.analyticsInterval as ReturnType<typeof setInterval>);
         this.analyticsInterval = null;
       }
+
+      // Stop heartbeat (allows orders to expire naturally)
+      this.polymarketClient.stopHeartbeat();
 
       // Close all positions
       await this.closeAllPositions('ENGINE_STOP');
@@ -672,7 +678,7 @@ export class TradingEngine extends EventEmitter {
     }
 
     // Verify arbitrage edge is real
-    if (signal.arbitrageSignal.edgePercentage < 0.005) {
+    if (signal.arbitrageSignal.edge < 0.005) {
       // Less than 0.5% edge
       return false;
     }

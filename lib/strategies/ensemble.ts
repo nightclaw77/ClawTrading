@@ -520,7 +520,7 @@ export class EnsembleEngine {
       timestamp: Date.now(),
       indicators: this.createMinimalIndicatorSnapshot(indicators),
       strength,
-      entryPrice: candles[candles.length - 1]?.close || 0,
+      entryPrice: indicators.vwap || indicators.ema?.ema20 || 0,
       riskRewardRatio: 1.5,
     };
   }
