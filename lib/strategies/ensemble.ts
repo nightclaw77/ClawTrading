@@ -171,10 +171,18 @@ export class EnsembleEngine {
       const hasConsensus = voteCheck[1];
       if (!hasConsensus) {
         // No majority agreement - reduce confidence significantly
+        if (!voteResult) {
+          return this.createNeutralSignal(
+            'No majority vote from strategies',
+            indicators,
+            SignalDirection.NEUTRAL,
+            20 // Low confidence
+          );
+        }
         return this.createNeutralSignal(
           'No majority vote from strategies',
           indicators,
-          voteResult ? voteResult.direction : SignalDirection.NEUTRAL,
+          voteResult.direction,
           20 // Low confidence
         );
       }
@@ -272,10 +280,7 @@ export class EnsembleEngine {
         recentWinRate: winRate,
         tradesToday: trades.length,
         winsToday: wins,
-        pnlToday:
-          grossProfit - grossLoss > 0
-            ? grossProfit - grossLoss
-            : -(grossLoss - grossProfit),
+        pnlToday: grossProfit - grossLoss,
         lastTradedTime: trades.length > 0 ? trades[trades.length - 1].exitTime : 0,
         performance: {
           winRate,
@@ -385,7 +390,7 @@ export class EnsembleEngine {
       (s) => s.direction === SignalDirection.SHORT
     ).length;
 
-    const majorityThreshold = Math.ceil(this.strategies.length / 2);
+    const majorityThreshold = Math.floor(this.strategies.length / 2) + 1;
 
     if (longVotes >= majorityThreshold) {
       // Find a LONG signal to return
@@ -515,7 +520,7 @@ export class EnsembleEngine {
       timestamp: Date.now(),
       indicators: this.createMinimalIndicatorSnapshot(indicators),
       strength,
-      entryPrice: indicators.timestamp ? undefined : 0,
+      entryPrice: candles[candles.length - 1]?.close || 0,
       riskRewardRatio: 1.5,
     };
   }

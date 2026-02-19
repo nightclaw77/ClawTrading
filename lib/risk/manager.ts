@@ -370,7 +370,9 @@ export class RiskManager {
 
     // Recalculate win rate
     const wins = this.closedTrades.filter(t => t.pnl > 0).length;
-    this.dailyStats.winRate = (wins / this.closedTrades.length) * 100;
+    if (this.closedTrades.length > 0) {
+      this.dailyStats.winRate = (wins / this.closedTrades.length) * 100;
+    }
 
     // Recalculate averages and profit factor
     this.updateDailyMetrics();
@@ -378,6 +380,14 @@ export class RiskManager {
     // Update trading frequency
     this.lastTradeTime = Date.now();
     this.tradesThisHour++;
+  }
+
+  /**
+   * Update ending balance when account balance changes
+   */
+  public updateBalance(currentBalance: number): void {
+    this.dailyStats.endingBalance = currentBalance;
+    this.peakBalance = Math.max(this.peakBalance, currentBalance);
   }
 
   /**

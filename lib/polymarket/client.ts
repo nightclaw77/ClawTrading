@@ -298,6 +298,10 @@ export class PolymarketClient {
       const bids = this.parseOrderbookLevels(response.bids);
       const asks = this.parseOrderbookLevels(response.asks);
 
+      if (!bids || bids.length === 0 || !asks || asks.length === 0) {
+        return { bids: [], asks: [], mid: 0.5, spread: 0, timestamp: Date.now() };
+      }
+
       const bestBid = bids[0]?.price || 0;
       const bestAsk = asks[0]?.price || 1;
       const mid = (bestBid + bestAsk) / 2;
@@ -353,7 +357,9 @@ export class PolymarketClient {
     side: OrderSide,
     price: number,
     size: number,
-    orderType: OrderType = 'GTC'
+    orderType: OrderType = 'GTC',
+    asset: Asset = 'BTC',
+    direction: 'UP' | 'DOWN' = 'UP'
   ): Promise<Order> {
     try {
       // Validate price is within valid range (0, 1]
@@ -384,8 +390,8 @@ export class PolymarketClient {
       return {
         orderId: response.order_id,
         tokenId,
-        asset: 'BTC', // Would be determined from token metadata in production
-        direction: 'UP',
+        asset,
+        direction,
         side,
         price,
         size,
@@ -409,10 +415,18 @@ export class PolymarketClient {
     try {
       const orderbook = await this.getOrderBook(tokenId);
 
+      // Validate orderbook has liquidity for market order
+      if (side === 'BUY' && (!orderbook.asks || orderbook.asks.length === 0)) {
+        throw new Error('No asks available for market order');
+      }
+      if (side === 'SELL' && (!orderbook.bids || orderbook.bids.length === 0)) {
+        throw new Error('No bids available for market order');
+      }
+
       // For market buy, take best ask; for market sell, take best bid
       const price = side === 'BUY'
-        ? (orderbook.asks[0]?.price || 0.99)
-        : (orderbook.bids[0]?.price || 0.01);
+        ? orderbook.asks[0].price
+        : orderbook.bids[0].price;
 
       // Market orders use FOK (Fill Or Kill) for immediate execution
       return this.placeLimitOrder(tokenId, side, price, size, 'FOK');

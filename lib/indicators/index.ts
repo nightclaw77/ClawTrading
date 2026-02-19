@@ -391,7 +391,8 @@ export function adx(
 
   const diPlus = (plusDMSmoothed / atrSmoothed) * 100;
   const diMinus = (minusDMSmoothed / atrSmoothed) * 100;
-  const di = Math.abs(diPlus - diMinus) / (diPlus + diMinus);
+  const diSum = diPlus + diMinus;
+  const di = diSum === 0 ? 0 : Math.abs(diPlus - diMinus) / diSum;
 
   // ADX is 14-period EMA of DI
   let adxValue = di;
@@ -782,7 +783,7 @@ export function calculateAllIndicators(candles: Candle[]): IndicatorValues {
     bollingerBands: bbValue,
     atr: {
       value: atrValue,
-      percent: isNaN(atrValue) ? NaN : (atrValue / currentPrice) * 100,
+      percent: (isNaN(atrValue) || currentPrice === 0) ? NaN : (atrValue / currentPrice) * 100,
     },
     adx: {
       value: adxValue.adx,
@@ -829,6 +830,21 @@ export function detectMarketRegime(candles: Candle[]): RegimeAnalysis {
   const adxValue = adx(candles, 14);
   const atrValue = atr(candles, 14);
   const currentPrice = closes[closes.length - 1];
+
+  // Guard against division by zero for currentPrice
+  if (currentPrice === 0) {
+    return {
+      currentRegime: MarketRegime.RANGING,
+      confidence: 0,
+      trendStrength: 0,
+      volatility: 0,
+      rangeHigh: 0,
+      rangeLow: 0,
+      adxValue: 0,
+      lastUpdated: Date.now(),
+    };
+  }
+
   const atrPercent = (atrValue / currentPrice) * 100;
 
   // Trend analysis - compare recent EMAs
@@ -869,7 +885,7 @@ export function detectMarketRegime(candles: Candle[]): RegimeAnalysis {
       trendStrength = (adxVal / 20) * 50;
     } else {
       // Ranging or choppy
-      const rangePercent = ((rangeHigh - rangeLow) / rangeLow) * 100;
+      const rangePercent = rangeLow === 0 ? 0 : ((rangeHigh - rangeLow) / rangeLow) * 100;
       if (atrPercent > 2 && rangePercent > 2) {
         regime = MarketRegime.VOLATILE;
         confidence = Math.min(atrPercent / 3, 1) * 100;
@@ -1007,7 +1023,7 @@ export function calculateOrderFlow(candles: Candle[]): OrderFlowData {
   }
 
   // Spoofing detection: large order but small actual movement
-  const priceMovePercent = ((currentCandle.close - prevCandle.close) / prevCandle.close) * 100;
+  const priceMovePercent = prevCandle.close === 0 ? 0 : ((currentCandle.close - prevCandle.close) / prevCandle.close) * 100;
   const spoofingDetected = largeOrdersDetected && Math.abs(priceMovePercent) < 0.1;
 
   return {

@@ -21,15 +21,20 @@ export default function Home() {
   const [solPrice, setSolPrice] = useState<PriceData | null>(null);
   const [botStatus, setBotStatus] = useState<EngineStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [priceError, setPriceError] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        let hasError = false;
+
         // Fetch BTC price
         const btcRes = await fetch('/api/price?asset=BTC');
         if (btcRes.ok) {
           const btcData = await btcRes.json();
           setBtcPrice(btcData);
+        } else {
+          hasError = true;
         }
 
         // Fetch SOL price
@@ -37,6 +42,8 @@ export default function Home() {
         if (solRes.ok) {
           const solData = await solRes.json();
           setSolPrice(solData);
+        } else {
+          hasError = true;
         }
 
         // Fetch bot status
@@ -45,8 +52,11 @@ export default function Home() {
           const statusData = await statusRes.json();
           setBotStatus(statusData.data?.state || null);
         }
+
+        setPriceError(hasError);
       } catch (error) {
         console.error('Failed to fetch data:', error);
+        setPriceError(true);
       } finally {
         setLoading(false);
       }
@@ -131,11 +141,20 @@ export default function Home() {
           </p>
 
           {/* Live Indicator */}
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full live-dot"></div>
-            <span className="text-sm text-green-400">Live & Ready</span>
-          </div>
+          {botStatus?.running && (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full live-dot"></div>
+              <span className="text-sm text-green-400">Live & Ready</span>
+            </div>
+          )}
         </div>
+
+        {/* Price Error State */}
+        {priceError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+            Unable to load price data. Please try again later.
+          </div>
+        )}
 
         {/* Price Tiles */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">

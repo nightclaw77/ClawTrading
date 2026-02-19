@@ -140,12 +140,14 @@ export class ArbitrageDetector extends EventEmitter {
       // Calculate momentum strength (velocity of price change)
       const momentumStrength = this.calculateMomentumStrength(
         exchangePrices,
-        window.openTimestamp
+        window.openTimestamp,
+        window
       );
 
       // Detect mismatch between exchange momentum and Polymarket pricing
       const theoreticalPrice = this.calculateTheoreticalPrice(priceMovement, window.direction);
       const mispriceAmount = theoreticalPrice - polyPrice;
+      if (theoreticalPrice <= 0) return null;
       const edgePercentage = Math.abs(mispriceAmount) / theoreticalPrice;
 
       // Check market health (UP + DOWN should sum to ~1.0)
@@ -280,15 +282,17 @@ export class ArbitrageDetector extends EventEmitter {
    * Calculate momentum strength on 0-1 scale
    * Based on velocity and consistency of price movement
    */
-  private calculateMomentumStrength(prices: ExchangeFeed[], windowOpenTime: number): number {
+  private calculateMomentumStrength(prices: ExchangeFeed[], windowOpenTime: number, window?: PolymarketWindow): number {
     if (prices.length < 2) return 0;
 
-    const recentPrices = prices.filter(p => p.timestamp >= windowOpenTime - 300000); // Last 5 min
+    const lookbackMs = window?.timeframe === '5m' ? 300000 : 900000;
+    const recentPrices = prices.filter(p => p.timestamp >= windowOpenTime - lookbackMs);
     if (recentPrices.length < 2) return 0;
 
     // Calculate returns over time windows
     const returns: number[] = [];
     for (let i = 1; i < recentPrices.length; i++) {
+      if (recentPrices[i - 1].price === 0) continue;
       const ret = (recentPrices[i].price - recentPrices[i - 1].price) / recentPrices[i - 1].price;
       returns.push(ret);
     }

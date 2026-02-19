@@ -180,7 +180,18 @@ function getEngine(): TradingEngine {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: ControlRequest = await request.json();
+    let body: ControlRequest;
+    try {
+      body = await request.json();
+    } catch (err) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid JSON in request body',
+        },
+        { status: 400 }
+      );
+    }
 
     if (!body.action) {
       return NextResponse.json(

@@ -123,7 +123,7 @@ export default function LearningVisualizationPage() {
     }, 3000);
 
     return () => clearInterval(pollInterval);
-  }, [botStats.winRate]);
+  }, []);
 
   const winLossColor = botStats.winRate >= 50 ? '#10b981' : '#ef4444';
   const pnlColor = botStats.todaysPnL >= 0 ? '#10b981' : '#ef4444';
@@ -458,7 +458,20 @@ export default function LearningVisualizationPage() {
             overflowY: 'auto',
             flex: 1,
           }}>
-            {tradeLogs.map((log, idx) => (
+            {tradeLogs.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '100px',
+                color: '#64748b',
+                fontSize: '13px',
+                fontStyle: 'italic',
+              }}>
+                No trades yet — waiting for first signal...
+              </div>
+            ) : (
+              tradeLogs.map((log, idx) => (
               <div key={idx} style={{
                 display: 'grid',
                 gridTemplateColumns: '70px 50px 60px 60px auto',
@@ -492,7 +505,8 @@ export default function LearningVisualizationPage() {
                   {log.pnl}
                 </span>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
 

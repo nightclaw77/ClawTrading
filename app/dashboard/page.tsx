@@ -101,7 +101,7 @@ const AnimatedNumber: React.FC<{
     };
 
     requestAnimationFrame(animate);
-  }, [value, displayValue]);
+  }, [value]);
 
   return (
     <span className={className}>
@@ -325,7 +325,7 @@ const AssetPanel: React.FC<{
               value={data.price}
               decimals={2}
               prefix="$"
-              className={data.price > 0 ? 'text-white' : 'text-white'}
+              className="text-white"
             />
           </div>
           <div
@@ -674,9 +674,9 @@ const PositionsTable: React.FC<{ positions: Position[] }> = ({ positions }) => {
                       }}
                     >
                       <AnimatedNumber
-                        value={pos.pnl}
+                        value={Math.abs(pos.pnl)}
                         decimals={2}
-                        prefix={pos.pnl > 0 ? '+$' : '-$'}
+                        prefix={`${pos.pnl >= 0 ? '+' : ''}$`}
                       />
                     </td>
                     <td className="text-right py-3 px-4 text-gray-400">
@@ -795,13 +795,10 @@ const StatsRow: React.FC<{ stats: BotStats }> = ({ stats }) => {
 const LoadingSkeleton: React.FC = () => (
   <div className="space-y-6">
     <div className="h-20 bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl animate-pulse" />
-    <div className="grid grid-cols-3 gap-4">
-      {[...Array(3)].map((_, i) => (
-        <div
-          key={i}
-          className="h-96 bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl animate-pulse"
-        />
-      ))}
+    <div className="grid grid-cols-12 gap-6">
+      <div className="col-span-12 md:col-span-3 h-96 bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl animate-pulse" />
+      <div className="col-span-12 md:col-span-6 h-96 bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl animate-pulse" />
+      <div className="col-span-12 md:col-span-3 h-96 bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl animate-pulse" />
     </div>
     <div className="h-64 bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl animate-pulse" />
   </div>
@@ -1027,6 +1024,7 @@ export default function Dashboard() {
                     }`}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    // TODO: Implement onClick handler to switch timeframe
                   >
                     {tf}
                   </motion.button>
@@ -1045,6 +1043,7 @@ export default function Dashboard() {
                     }`}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    // TODO: Implement onClick handler to switch asset
                   >
                     {asset}
                   </motion.button>

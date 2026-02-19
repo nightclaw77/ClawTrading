@@ -73,6 +73,7 @@ export const NeuralNetwork3D = React.forwardRef<NeuralNetwork3DHandle, NeuralNet
     const groupRef = useRef<any>(null);
     const animationIdRef = useRef<number | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
       // Load Three.js from CDN if not already loaded
@@ -82,6 +83,10 @@ export const NeuralNetwork3D = React.forwardRef<NeuralNetwork3DHandle, NeuralNet
         script.async = true;
         script.onload = () => {
           initScene();
+          setIsLoading(false);
+        };
+        script.onerror = () => {
+          setHasError(true);
           setIsLoading(false);
         };
         document.head.appendChild(script);
@@ -523,10 +528,18 @@ export const NeuralNetwork3D = React.forwardRef<NeuralNetwork3DHandle, NeuralNet
       },
     }));
 
+    if (hasError) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <div style={{ color: '#aaa', fontSize: '14px' }}>3D visualization unavailable</div>
+        </div>
+      );
+    }
+
     if (isLoading) {
       return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-          <div style={{ color: '#888', fontSize: '14px' }}>Loading 3D visualization...</div>
+          <div style={{ color: '#aaa', fontSize: '14px' }}>Loading 3D visualization...</div>
         </div>
       );
     }

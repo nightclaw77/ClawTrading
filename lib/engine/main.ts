@@ -607,9 +607,9 @@ export class TradingEngine extends EventEmitter {
       // Check for conflicts using actual properties from analyzeWindow
       const techDirection = techSignal.direction === SignalDirection.LONG ? 'UP' : 'DOWN';
       // The analyzeWindow returns an ArbitrageSignal with momentum property
-      const arbMomentum = (arbSignal as any).momentum;
+      const arbMomentum = (arbSignal as any).momentum ?? 'UNKNOWN';
       const arbDirection = arbMomentum === 'UP' || arbMomentum === 'DOWN' ? arbMomentum : techDirection;
-      const arbConfidence = (arbSignal as any).confidence || 0;
+      const arbConfidence = (arbSignal as any).confidence ?? 0;
 
       if (techDirection === arbDirection) {
         // Strong agreement: increase confidence
@@ -672,7 +672,7 @@ export class TradingEngine extends EventEmitter {
     }
 
     // Verify arbitrage edge is real
-    if (signal.arbitrageSignal.edge < 0.005) {
+    if (signal.arbitrageSignal.edgePercentage < 0.005) {
       // Less than 0.5% edge
       return false;
     }
@@ -1243,8 +1243,8 @@ export class TradingEngine extends EventEmitter {
           this.performanceMetrics.losses > 0
             ? this.performanceMetrics.wins / this.performanceMetrics.losses
             : this.performanceMetrics.wins,
-        largestWin: Math.max(...this.closedTrades.map((t) => t.pnl), 0),
-        largestLoss: Math.min(...this.closedTrades.map((t) => t.pnl), 0),
+        largestWin: this.closedTrades.length > 0 ? Math.max(...this.closedTrades.map((t) => t.pnl)) : 0,
+        largestLoss: this.closedTrades.length > 0 ? Math.min(...this.closedTrades.map((t) => t.pnl)) : 0,
         averageTradeDuration: this.calculateAverageTradeDuration(),
         sharpeRatio: 1.5, // Would calculate from returns
       },
@@ -1398,7 +1398,28 @@ export class TradingEngine extends EventEmitter {
 
   public async resume(): Promise<void> {
     if (!this.isRunning) {
+      this.isRunning = true;
       this.botState.status = 'RUNNING';
+
+      // Restart main trading loop if not already running
+      if (!this.mainLoopInterval) {
+        this.mainLoopInterval = setInterval(() => {
+          this.runCycle().catch((err) => {
+            this.emit('error', {
+              message: `Cycle error: ${err.message}`,
+              timestamp: Date.now(),
+            });
+          });
+        }, 10000);
+      }
+
+      // Restart analytics loop if not already running
+      if (!this.analyticsInterval) {
+        this.analyticsInterval = setInterval(() => {
+          this.updateMetrics();
+        }, 2000);
+      }
+
       this.emit('state:updated', { status: 'RUNNING', timestamp: Date.now() });
     }
   }
