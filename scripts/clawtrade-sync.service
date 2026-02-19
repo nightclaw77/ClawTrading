@@ -1,0 +1,34 @@
+# ============================================================================
+# ClawTrading Sync Watcher - systemd service
+# ============================================================================
+# Install on VPS:
+#   sudo cp scripts/clawtrade-sync.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable clawtrade-sync
+#   sudo systemctl start clawtrade-sync
+# ============================================================================
+
+[Unit]
+Description=ClawTrading Auto-Sync Watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ClawTrading
+ExecStart=/home/ubuntu/ClawTrading/scripts/sync-watcher.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=CLAWTRADE_DIR=/home/ubuntu/ClawTrading
+Environment=CLAWTRADE_BRANCH=main
+Environment=SYNC_INTERVAL=15
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/home/ubuntu/.nvm/versions/node/v22/bin
+
+[Install]
+WantedBy=multi-user.target
